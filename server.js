@@ -3,10 +3,10 @@ import express from 'express';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+
 app.use(express.json());
 
-// In-memory data storage
+
 let events = [
   {
     id: 1,
@@ -62,14 +62,12 @@ let bookings = [
 let nextEventId = 3;
 let nextBookingId = 3;
 
-// Utility functions
+
 const findEventById = (id) => events.find(event => event.id === parseInt(id));
 const findBookingById = (id) => bookings.find(booking => booking.id === parseInt(id));
 const findBookingsByEventId = (eventId) => bookings.filter(booking => booking.eventId === parseInt(eventId));
 
-// ==================== EVENT ROUTES ====================
 
-// 1. GET /events - Get all events
 app.get('/events', (req, res) => {
   try {
     res.json({
@@ -86,7 +84,7 @@ app.get('/events', (req, res) => {
   }
 });
 
-// 2. POST /events/add - Create a new event
+
 app.post('/events/add', (req, res) => {
   try {
     const {
@@ -99,7 +97,6 @@ app.post('/events/add', (req, res) => {
       category
     } = req.body;
 
-    // Validation
     if (!name || !description || !date || !time || !venue || !maxParticipants || !category) {
       return res.status(400).json({
         success: false,
@@ -136,7 +133,7 @@ app.post('/events/add', (req, res) => {
   }
 });
 
-// 3. GET /event/:id - Get event by ID
+
 app.get('/event/:id', (req, res) => {
   try {
     const event = findEventById(req.params.id);
@@ -161,7 +158,7 @@ app.get('/event/:id', (req, res) => {
   }
 });
 
-// 4. PUT /event/:id - Update event details
+
 app.put('/event/:id', (req, res) => {
   try {
     const event = findEventById(req.params.id);
@@ -183,7 +180,7 @@ app.put('/event/:id', (req, res) => {
       category
     } = req.body;
 
-    // Update event fields
+    
     if (name) event.name = name;
     if (description) event.description = description;
     if (date) event.date = date;
@@ -207,7 +204,7 @@ app.put('/event/:id', (req, res) => {
   }
 });
 
-// 5. DELETE /event/:id - Cancel an event
+
 app.delete('/event/:id', (req, res) => {
   try {
     const eventIndex = events.findIndex(event => event.id === parseInt(req.params.id));
@@ -219,10 +216,10 @@ app.delete('/event/:id', (req, res) => {
       });
     }
 
-    // Remove all bookings for this event
+    
     bookings = bookings.filter(booking => booking.eventId !== parseInt(req.params.id));
     
-    // Remove the event
+
     const deletedEvent = events.splice(eventIndex, 1)[0];
 
     res.json({
@@ -239,12 +236,10 @@ app.delete('/event/:id', (req, res) => {
   }
 });
 
-// ==================== BOOKING ROUTES ====================
 
-// 1. GET /api/bookings - Get all event bookings
 app.get('/api/bookings', (req, res) => {
   try {
-    // Enrich bookings with event details
+    
     const enrichedBookings = bookings.map(booking => {
       const event = findEventById(booking.eventId);
       return {
@@ -272,7 +267,7 @@ app.get('/api/bookings', (req, res) => {
   }
 });
 
-// 2. POST /api/bookings - Create a new booking
+
 app.post('/api/bookings', (req, res) => {
   try {
     const {
@@ -285,7 +280,7 @@ app.post('/api/bookings', (req, res) => {
       year
     } = req.body;
 
-    // Validation
+   
     if (!eventId || !participantName || !email || !phone) {
       return res.status(400).json({
         success: false,
@@ -293,7 +288,7 @@ app.post('/api/bookings', (req, res) => {
       });
     }
 
-    // Check if event exists
+   
     const event = findEventById(eventId);
     if (!event) {
       return res.status(404).json({
@@ -302,7 +297,7 @@ app.post('/api/bookings', (req, res) => {
       });
     }
 
-    // Check if event has available slots
+    
     if (event.currentParticipants >= event.maxParticipants) {
       return res.status(400).json({
         success: false,
@@ -310,7 +305,7 @@ app.post('/api/bookings', (req, res) => {
       });
     }
 
-    // Check if email is already registered for this event
+    
     const existingBooking = bookings.find(
       booking => booking.eventId === parseInt(eventId) && booking.email === email
     );
@@ -337,7 +332,7 @@ app.post('/api/bookings', (req, res) => {
 
     bookings.push(newBooking);
     
-    // Update event participant count
+   
     event.currentParticipants++;
 
     res.status(201).json({
@@ -362,7 +357,7 @@ app.post('/api/bookings', (req, res) => {
   }
 });
 
-// 3. GET /api/bookings/:id - Get booking by ID
+
 app.get('/api/bookings/:id', (req, res) => {
   try {
     const booking = findBookingById(req.params.id);
@@ -374,7 +369,6 @@ app.get('/api/bookings/:id', (req, res) => {
       });
     }
 
-    // Get event details
     const event = findEventById(booking.eventId);
 
     res.json({
@@ -400,7 +394,7 @@ app.get('/api/bookings/:id', (req, res) => {
   }
 });
 
-// 4. PUT /api/bookings/:id - Update participant details
+
 app.put('/api/bookings/:id', (req, res) => {
   try {
     const booking = findBookingById(req.params.id);
@@ -421,7 +415,7 @@ app.put('/api/bookings/:id', (req, res) => {
       year
     } = req.body;
 
-    // Update booking fields
+    
     if (participantName) booking.participantName = participantName;
     if (email) booking.email = email;
     if (phone) booking.phone = phone;
@@ -444,7 +438,7 @@ app.put('/api/bookings/:id', (req, res) => {
   }
 });
 
-// 5. DELETE /api/bookings/:id - Cancel a booking
+
 app.delete('/api/bookings/:id', (req, res) => {
   try {
     const bookingIndex = bookings.findIndex(booking => booking.id === parseInt(req.params.id));
@@ -458,7 +452,7 @@ app.delete('/api/bookings/:id', (req, res) => {
 
     const deletedBooking = bookings.splice(bookingIndex, 1)[0];
     
-    // Update event participant count
+    
     const event = findEventById(deletedBooking.eventId);
     if (event && event.currentParticipants > 0) {
       event.currentParticipants--;
@@ -478,7 +472,6 @@ app.delete('/api/bookings/:id', (req, res) => {
   }
 });
 
-// Root endpoint
 app.get('/', (req, res) => {
   res.json({
     message: "Welcome to Synergia Event Booking API",
@@ -501,7 +494,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Simple 404 handler - placed at the end
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -509,7 +502,7 @@ app.use((req, res) => {
   });
 });
 
-// Start server
+
 app.listen(PORT, () => {
   console.log(`Synergia Event Booking API running on port ${PORT}`);
   console.log(`Base URL: http://localhost:${PORT}`);
