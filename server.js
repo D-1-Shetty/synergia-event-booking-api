@@ -1,75 +1,32 @@
 import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+// Load environment variables FIRST
+dotenv.config();
+
+// Import other modules AFTER dotenv.config()
+import connectDB from './config/database.js';
+import Event from './models/Event.js';
+import Booking from './models/Booking.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-
+// Middleware
+app.use(cors());
 app.use(express.json());
 
+// Connect to MongoDB
+connectDB();
 
-let events = [
-  {
-    id: 1,
-    name: "Code Hackathon",
-    description: "24-hour competitive programming challenge",
-    date: "2024-02-15",
-    time: "10:00 AM",
-    venue: "Tech Auditorium",
-    maxParticipants: 50,
-    currentParticipants: 25,
-    category: "Technical"
-  },
-  {
-    id: 2,
-    name: "AI Workshop",
-    description: "Hands-on machine learning workshop",
-    date: "2024-02-20",
-    time: "2:00 PM",
-    venue: "Computer Lab 3",
-    maxParticipants: 30,
-    currentParticipants: 15,
-    category: "Workshop"
-  }
-];
+// ==================== EVENT ROUTES ====================
 
-let bookings = [
-  {
-    id: 1,
-    eventId: 1,
-    participantName: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1234567890",
-    college: "Tech University",
-    department: "Computer Science",
-    year: "3rd Year",
-    registrationDate: "2024-01-15T10:30:00Z",
-    status: "confirmed"
-  },
-  {
-    id: 2,
-    eventId: 2,
-    participantName: "Jane Smith",
-    email: "jane.smith@example.com",
-    phone: "+0987654321",
-    college: "Engineering College",
-    department: "AI & ML",
-    year: "4th Year",
-    registrationDate: "2024-01-16T14:20:00Z",
-    status: "confirmed"
-  }
-];
-
-let nextEventId = 3;
-let nextBookingId = 3;
-
-
-const findEventById = (id) => events.find(event => event.id === parseInt(id));
-const findBookingById = (id) => bookings.find(booking => booking.id === parseInt(id));
-const findBookingsByEventId = (eventId) => bookings.filter(booking => booking.eventId === parseInt(eventId));
-
-
-app.get('/events', (req, res) => {
+// 1. GET /events - Get all events
+app.get('/events', async (req, res) => {
   try {
+    const events = await Event.find({ status: 'active' });
+    
     res.json({
       success: true,
       count: events.length,
@@ -84,8 +41,8 @@ app.get('/events', (req, res) => {
   }
 });
 
-
-app.post('/events/add', (req, res) => {
+// 2. POST /events/add - Create a new event
+app.post('/events/add', async (req, res) => {
   try {
     const {
       name,
@@ -97,6 +54,7 @@ app.post('/events/add', (req, res) => {
       category
     } = req.body;
 
+    // Validation
     if (!name || !description || !date || !time || !venue || !maxParticipants || !category) {
       return res.status(400).json({
         success: false,
@@ -104,25 +62,22 @@ app.post('/events/add', (req, res) => {
       });
     }
 
-    const newEvent = {
-      id: nextEventId++,
+    const newEvent = new Event({
       name,
       description,
       date,
       time,
       venue,
       maxParticipants: parseInt(maxParticipants),
-      currentParticipants: 0,
-      category,
-      createdAt: new Date().toISOString()
-    };
+      category
+    });
 
-    events.push(newEvent);
+    const savedEvent = await newEvent.save();
 
     res.status(201).json({
       success: true,
       message: "Event created successfully",
-      data: newEvent
+      data: savedEvent
     });
   } catch (error) {
     res.status(500).json({
@@ -133,10 +88,10 @@ app.post('/events/add', (req, res) => {
   }
 });
 
-
-app.get('/event/:id', (req, res) => {
+// 3. GET /event/:id - Get event by ID
+app.get('/event/:id', async (req, res) => {
   try {
-    const event = findEventById(req.params.id);
+    const event = await Event.findById(req.params.id);
     
     if (!event) {
       return res.status(404).json({
@@ -158,18 +113,9 @@ app.get('/event/:id', (req, res) => {
   }
 });
 
-
-app.put('/event/:id', (req, res) => {
+// 4. PUT /event/:id - Update event details
+app.put('/event/:id', async (req, res) => {
   try {
-    const event = findEventById(req.params.id);
-    
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: "Event not found"
-      });
-    }
-
     const {
       name,
       description,
@@ -177,23 +123,36 @@ app.put('/event/:id', (req, res) => {
       time,
       venue,
       maxParticipants,
-      category
+      category,
+      status
     } = req.body;
 
-    
-    if (name) event.name = name;
-    if (description) event.description = description;
-    if (date) event.date = date;
-    if (time) event.time = time;
-    if (venue) event.venue = venue;
-    if (maxParticipants) event.maxParticipants = parseInt(maxParticipants);
-    if (category) event.category = category;
-    event.updatedAt = new Date().toISOString();
+    const updatedEvent = await Event.findByIdAndUpdate(
+      req.params.id,
+      {
+        name,
+        description,
+        date,
+        time,
+        venue,
+        maxParticipants,
+        category,
+        status
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedEvent) {
+      return res.status(404).json({
+        success: false,
+        message: "Event not found"
+      });
+    }
 
     res.json({
       success: true,
       message: "Event updated successfully",
-      data: event
+      data: updatedEvent
     });
   } catch (error) {
     res.status(500).json({
@@ -204,28 +163,26 @@ app.put('/event/:id', (req, res) => {
   }
 });
 
-
-app.delete('/event/:id', (req, res) => {
+// 5. DELETE /event/:id - Cancel an event
+app.delete('/event/:id', async (req, res) => {
   try {
-    const eventIndex = events.findIndex(event => event.id === parseInt(req.params.id));
-    
-    if (eventIndex === -1) {
+    const cancelledEvent = await Event.findByIdAndUpdate(
+      req.params.id,
+      { status: 'cancelled' },
+      { new: true }
+    );
+
+    if (!cancelledEvent) {
       return res.status(404).json({
         success: false,
         message: "Event not found"
       });
     }
 
-    
-    bookings = bookings.filter(booking => booking.eventId !== parseInt(req.params.id));
-    
-
-    const deletedEvent = events.splice(eventIndex, 1)[0];
-
     res.json({
       success: true,
-      message: "Event and associated bookings cancelled successfully",
-      data: deletedEvent
+      message: "Event cancelled successfully",
+      data: cancelledEvent
     });
   } catch (error) {
     res.status(500).json({
@@ -236,22 +193,30 @@ app.delete('/event/:id', (req, res) => {
   }
 });
 
+// ==================== BOOKING ROUTES ====================
 
-app.get('/api/bookings', (req, res) => {
+// 1. GET /api/bookings - Get all event bookings
+app.get('/api/bookings', async (req, res) => {
   try {
+    const bookings = await Booking.find({ status: 'confirmed' })
+      .populate('eventId', 'name date time venue');
     
-    const enrichedBookings = bookings.map(booking => {
-      const event = findEventById(booking.eventId);
-      return {
-        ...booking,
-        event: event ? {
-          name: event.name,
-          date: event.date,
-          time: event.time,
-          venue: event.venue
-        } : null
-      };
-    });
+    const enrichedBookings = bookings.map(booking => ({
+      id: booking._id,
+      participantName: booking.participantName,
+      email: booking.email,
+      phone: booking.phone,
+      college: booking.college,
+      department: booking.department,
+      year: booking.year,
+      registrationDate: booking.createdAt,
+      event: {
+        name: booking.eventId.name,
+        date: booking.eventId.date,
+        time: booking.eventId.time,
+        venue: booking.eventId.venue
+      }
+    }));
 
     res.json({
       success: true,
@@ -267,8 +232,8 @@ app.get('/api/bookings', (req, res) => {
   }
 });
 
-
-app.post('/api/bookings', (req, res) => {
+// 2. POST /api/bookings - Create a new booking
+app.post('/api/bookings', async (req, res) => {
   try {
     const {
       eventId,
@@ -280,7 +245,7 @@ app.post('/api/bookings', (req, res) => {
       year
     } = req.body;
 
-   
+    // Validation
     if (!eventId || !participantName || !email || !phone) {
       return res.status(400).json({
         success: false,
@@ -288,8 +253,8 @@ app.post('/api/bookings', (req, res) => {
       });
     }
 
-   
-    const event = findEventById(eventId);
+    // Check if event exists and is active
+    const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({
         success: false,
@@ -297,7 +262,14 @@ app.post('/api/bookings', (req, res) => {
       });
     }
 
-    
+    if (event.status !== 'active') {
+      return res.status(400).json({
+        success: false,
+        message: "Event is not active for bookings"
+      });
+    }
+
+    // Check if event has available slots
     if (event.currentParticipants >= event.maxParticipants) {
       return res.status(400).json({
         success: false,
@@ -305,50 +277,34 @@ app.post('/api/bookings', (req, res) => {
       });
     }
 
-    
-    const existingBooking = bookings.find(
-      booking => booking.eventId === parseInt(eventId) && booking.email === email
-    );
-
-    if (existingBooking) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is already registered for this event"
-      });
-    }
-
-    const newBooking = {
-      id: nextBookingId++,
-      eventId: parseInt(eventId),
+    const newBooking = new Booking({
+      eventId,
       participantName,
       email,
       phone,
       college: college || "Not specified",
       department: department || "Not specified",
-      year: year || "Not specified",
-      registrationDate: new Date().toISOString(),
-      status: "confirmed"
-    };
+      year: year || "Not specified"
+    });
 
-    bookings.push(newBooking);
+    const savedBooking = await newBooking.save();
     
-   
-    event.currentParticipants++;
+    // Update event participant count
+    event.currentParticipants += 1;
+    await event.save();
 
     res.status(201).json({
       success: true,
       message: "Booking created successfully",
-      data: {
-        ...newBooking,
-        event: {
-          name: event.name,
-          date: event.date,
-          time: event.time,
-          venue: event.venue
-        }
-      }
+      data: savedBooking
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is already registered for this event"
+      });
+    }
     res.status(500).json({
       success: false,
       message: "Error creating booking",
@@ -357,127 +313,13 @@ app.post('/api/bookings', (req, res) => {
   }
 });
 
-
-app.get('/api/bookings/:id', (req, res) => {
-  try {
-    const booking = findBookingById(req.params.id);
-    
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found"
-      });
-    }
-
-    const event = findEventById(booking.eventId);
-
-    res.json({
-      success: true,
-      data: {
-        ...booking,
-        event: event ? {
-          name: event.name,
-          description: event.description,
-          date: event.date,
-          time: event.time,
-          venue: event.venue,
-          category: event.category
-        } : null
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error fetching booking",
-      error: error.message
-    });
-  }
-});
-
-
-app.put('/api/bookings/:id', (req, res) => {
-  try {
-    const booking = findBookingById(req.params.id);
-    
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found"
-      });
-    }
-
-    const {
-      participantName,
-      email,
-      phone,
-      college,
-      department,
-      year
-    } = req.body;
-
-    
-    if (participantName) booking.participantName = participantName;
-    if (email) booking.email = email;
-    if (phone) booking.phone = phone;
-    if (college) booking.college = college;
-    if (department) booking.department = department;
-    if (year) booking.year = year;
-    booking.updatedAt = new Date().toISOString();
-
-    res.json({
-      success: true,
-      message: "Booking updated successfully",
-      data: booking
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error updating booking",
-      error: error.message
-    });
-  }
-});
-
-
-app.delete('/api/bookings/:id', (req, res) => {
-  try {
-    const bookingIndex = bookings.findIndex(booking => booking.id === parseInt(req.params.id));
-    
-    if (bookingIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found"
-      });
-    }
-
-    const deletedBooking = bookings.splice(bookingIndex, 1)[0];
-    
-    
-    const event = findEventById(deletedBooking.eventId);
-    if (event && event.currentParticipants > 0) {
-      event.currentParticipants--;
-    }
-
-    res.json({
-      success: true,
-      message: "Booking cancelled successfully",
-      data: deletedBooking
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error cancelling booking",
-      error: error.message
-    });
-  }
-});
-
+// Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    message: "Welcome to Synergia Event Booking API",
+    message: "Welcome to Synergia Event Booking API with MongoDB",
     endpoints: {
       events: {
-        "GET /events": "Get all events",
+        "GET /events": "Get all active events",
         "POST /events/add": "Create new event",
         "GET /event/:id": "Get event by ID",
         "PUT /event/:id": "Update event",
@@ -494,7 +336,7 @@ app.get('/', (req, res) => {
   });
 });
 
-
+// 404 handler - MUST BE AFTER ALL ROUTES
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -502,9 +344,19 @@ app.use((req, res) => {
   });
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: "Something went wrong!",
+    error: process.env.NODE_ENV === 'production' ? {} : err.message
+  });
+});
 
+// Start server - THIS MUST BE LAST
 app.listen(PORT, () => {
-  console.log(`Synergia Event Booking API running on port ${PORT}`);
-  console.log(`Base URL: http://localhost:${PORT}`);
-  console.log(`API Documentation available at: http://localhost:${PORT}/`);
+  console.log(`🚀 Synergia Event Booking API running on port ${PORT}`);
+  console.log(`📍 Base URL: http://localhost:${PORT}`);
+  console.log(`📚 API Documentation: http://localhost:${PORT}/`);
 });
