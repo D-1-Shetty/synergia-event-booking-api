@@ -24,7 +24,7 @@ connectDB();
 app.get('/events', async (req, res) => {
   try {
     const events = await Event.find({ status: 'active' });
-    
+    console.log('events');
     res.json({
       success: true,
       count: events.length,
