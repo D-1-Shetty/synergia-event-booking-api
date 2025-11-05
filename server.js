@@ -2,10 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-// Load environment variables FIRST
+
 dotenv.config();
 
-// Import other modules AFTER dotenv.config()
+
 import connectDB from './config/database.js';
 import Event from './models/Event.js';
 import Booking from './models/Booking.js';
@@ -13,16 +13,14 @@ import Booking from './models/Booking.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+
 app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
+
 connectDB();
 
-// ==================== EVENT ROUTES ====================
 
-// 1. GET /events - Get all events
 app.get('/events', async (req, res) => {
   try {
     const events = await Event.find({ status: 'active' });
@@ -41,7 +39,7 @@ app.get('/events', async (req, res) => {
   }
 });
 
-// 2. POST /events/add - Create a new event
+
 app.post('/events/add', async (req, res) => {
   try {
     const {
@@ -54,7 +52,7 @@ app.post('/events/add', async (req, res) => {
       category
     } = req.body;
 
-    // Validation
+    
     if (!name || !description || !date || !time || !venue || !maxParticipants || !category) {
       return res.status(400).json({
         success: false,
@@ -88,7 +86,7 @@ app.post('/events/add', async (req, res) => {
   }
 });
 
-// 3. GET /event/:id - Get event by ID
+
 app.get('/event/:id', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -113,7 +111,7 @@ app.get('/event/:id', async (req, res) => {
   }
 });
 
-// 4. PUT /event/:id - Update event details
+
 app.put('/event/:id', async (req, res) => {
   try {
     const {
@@ -163,7 +161,6 @@ app.put('/event/:id', async (req, res) => {
   }
 });
 
-// 5. DELETE /event/:id - Cancel an event
 app.delete('/event/:id', async (req, res) => {
   try {
     const cancelledEvent = await Event.findByIdAndUpdate(
@@ -193,9 +190,7 @@ app.delete('/event/:id', async (req, res) => {
   }
 });
 
-// ==================== BOOKING ROUTES ====================
 
-// 1. GET /api/bookings - Get all event bookings
 app.get('/api/bookings', async (req, res) => {
   try {
     const bookings = await Booking.find({ status: 'confirmed' })
@@ -232,7 +227,7 @@ app.get('/api/bookings', async (req, res) => {
   }
 });
 
-// 2. POST /api/bookings - Create a new booking
+
 app.post('/api/bookings', async (req, res) => {
   try {
     const {
@@ -245,7 +240,7 @@ app.post('/api/bookings', async (req, res) => {
       year
     } = req.body;
 
-    // Validation
+    
     if (!eventId || !participantName || !email || !phone) {
       return res.status(400).json({
         success: false,
@@ -253,7 +248,7 @@ app.post('/api/bookings', async (req, res) => {
       });
     }
 
-    // Check if event exists and is active
+    
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({
@@ -269,7 +264,7 @@ app.post('/api/bookings', async (req, res) => {
       });
     }
 
-    // Check if event has available slots
+    
     if (event.currentParticipants >= event.maxParticipants) {
       return res.status(400).json({
         success: false,
@@ -289,7 +284,7 @@ app.post('/api/bookings', async (req, res) => {
 
     const savedBooking = await newBooking.save();
     
-    // Update event participant count
+ 
     event.currentParticipants += 1;
     await event.save();
 
@@ -313,7 +308,7 @@ app.post('/api/bookings', async (req, res) => {
   }
 });
 
-// Root endpoint
+
 app.get('/', (req, res) => {
   res.json({
     message: "Welcome to Synergia Event Booking API with MongoDB",
@@ -336,7 +331,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// 404 handler - MUST BE AFTER ALL ROUTES
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -344,7 +339,7 @@ app.use((req, res) => {
   });
 });
 
-// Error handling middleware
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
@@ -354,9 +349,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server - THIS MUST BE LAST
+
 app.listen(PORT, () => {
-  console.log(`🚀 Synergia Event Booking API running on port ${PORT}`);
-  console.log(`📍 Base URL: http://localhost:${PORT}`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/`);
+  console.log(` Synergia Event Booking API running on port ${PORT}`);
+  console.log(` Base URL: http://localhost:${PORT}`);
+  console.log(` API Documentation: http://localhost:${PORT}/`);
 });

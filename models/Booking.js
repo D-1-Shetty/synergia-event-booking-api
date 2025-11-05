@@ -44,24 +44,23 @@ const bookingSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  collection: 'booking' // Explicit collection name
+  collection: 'booking' 
 });
 
-// Compound index to prevent duplicate bookings for same event and email
+
 bookingSchema.index({ eventId: 1, email: 1 }, { unique: true });
 
-// Virtual for formatted registration date
+
 bookingSchema.virtual('registrationDate').get(function() {
   return this.createdAt;
 });
 
-// Instance method to cancel booking
+
 bookingSchema.methods.cancel = function() {
   this.status = 'cancelled';
   return this.save();
 };
 
-// Static method to find confirmed bookings
 bookingSchema.statics.findConfirmed = function() {
   return this.find({ status: 'confirmed' });
 };

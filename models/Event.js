@@ -44,22 +44,22 @@ const eventSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  collection: 'event' // Explicitly set collection name to 'event'
+  collection: 'event' 
 });
 
-// Virtual to check if event is full
+
 eventSchema.virtual('isFull').get(function() {
   return this.currentParticipants >= this.maxParticipants;
 });
 
-// Instance method to check if can add participant
+
 eventSchema.methods.canAddParticipant = function() {
   return this.currentParticipants < this.maxParticipants && this.status === 'active';
 };
 
-// Static method to find active events
+
 eventSchema.statics.findActive = function() {
   return this.find({ status: 'active' });
 };
 
-export default mongoose.model('Event', eventSchema, 'event'); // Third parameter sets collection name
+export default mongoose.model('Event', eventSchema, 'event'); 
